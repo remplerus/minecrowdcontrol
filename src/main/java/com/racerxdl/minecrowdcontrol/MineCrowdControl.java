@@ -77,8 +77,8 @@ public class MineCrowdControl {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onJump(LivingEvent.LivingJumpEvent event) {
         if (cs.GetStates().getJumpDisabled()) {
-            Vector3d motion = event.getEntity().getMotion();
-            event.getEntity().setMotion(motion.getX(), 0, motion.getZ());
+            Vector3d motion = event.getEntity().getDeltaMovement();
+            event.getEntity().setDeltaMovement(motion.x(), 0, motion.z());
         }
     }
 

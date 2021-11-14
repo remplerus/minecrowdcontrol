@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,12 +23,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ControlServer {
     private static final Logger Log = LogManager.getLogger();
 
-    private MinecraftServer server;
+    private final MinecraftServer server;
     private PlayerEntity player;
-    private AtomicBoolean running;
+    private final AtomicBoolean running;
     private Minecraft client;
     private PlayerStates states;
-    private ScheduledExecutorService executorService;
+    private final ScheduledExecutorService executorService;
 
     public ControlServer(MinecraftServer server) {
         this.server = server;
@@ -66,13 +65,13 @@ public class ControlServer {
         if (states.getDrunkMode()) {
             if (client != null) {
                 if (EphemeralStates.DrunkModeFOVIncreasing) {
-                    client.gameSettings.fov += Tools.FOV_STEP;
-                    if (client.gameSettings.fov >= Tools.MAX_FOV) {
+                    client.options.fov += Tools.FOV_STEP;
+                    if (client.options.fov >= Tools.MAX_FOV) {
                         EphemeralStates.DrunkModeFOVIncreasing = false;
                     }
                 } else {
-                    client.gameSettings.fov -= Tools.FOV_STEP;
-                    if (client.gameSettings.fov <= Tools.MIN_FOV) {
+                    client.options.fov -= Tools.FOV_STEP;
+                    if (client.options.fov <= Tools.MIN_FOV) {
                         EphemeralStates.DrunkModeFOVIncreasing = true;
                     }
                 }
@@ -80,14 +79,14 @@ public class ControlServer {
             executorService.schedule(this::DrunkModeLoop, Tools.DRUNK_REFRESH_INTERVAL, TimeUnit.MILLISECONDS);
         } else {
             Log.info("Stopping drunk mode loop");
-            client.gameSettings.fov = GetStates().getOriginalFOV();
+            client.options.fov = GetStates().getOriginalFOV();
         }
     }
 
     public void SetClient(Minecraft client) {
         Log.info("Setting client!");
         this.client = client;
-        SetStates(GetStates().setOriginalFOV(client.gameSettings.fov));
+        SetStates(GetStates().setOriginalFOV(client.options.fov));
     }
 
     public void SetPlayer(PlayerEntity player) {
@@ -184,7 +183,7 @@ public class ControlServer {
 
             if (req.type == RequestType.Start && res.status == EffectResult.Success && req.code.toUpperCase().equals("DRUNK_MODE")) {
                 Log.info("Starting drunk mode loop");
-                SetStates(GetStates().setOriginalFOV(client.gameSettings.fov));
+                SetStates(GetStates().setOriginalFOV(client.options.fov));
                 DrunkModeLoop();
             }
 

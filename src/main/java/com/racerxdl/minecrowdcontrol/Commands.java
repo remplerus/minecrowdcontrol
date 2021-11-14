@@ -23,7 +23,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.DimensionType;
 import net.minecraft.world.Explosion;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -31,7 +30,6 @@ import net.minecraft.world.server.ServerWorld;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.Field;
 import java.text.MessageFormat;
 import java.util.*;
 
@@ -64,31 +62,34 @@ public class Commands {
         put("EXPLODE_PLAYER", Commands::ExplodePlayer);
     }};
 
-    private static final List<EntityType> spawnEntities = new ArrayList<>(Arrays.asList(
+    private static final List<EntityType<?>> spawnEntities = new ArrayList<>(Arrays.asList(
             EntityType.CREEPER,
-            EntityType.ENDERMAN,
-            EntityType.ENDER_DRAGON,
             EntityType.BLAZE,
             EntityType.CAVE_SPIDER,
-            EntityType.SPIDER,
             EntityType.WITCH,
             EntityType.BEE,
+            EntityType.ZOMBIE,
+            EntityType.CHICKEN,
+            EntityType.PIG,
+            EntityType.VILLAGER,
+            EntityType.SILVERFISH,
+            EntityType.RAVAGER,
+            EntityType.VEX,
+            EntityType.TROPICAL_FISH
+    ));
+
+    private static final List<EntityType<?>> spawnBigEntites = new ArrayList<>(Arrays.asList(
+            EntityType.PHANTOM,
+            EntityType.SLIME,
+            EntityType.WITHER,
+            EntityType.SHEEP,
+            EntityType.COW,
             EntityType.HORSE,
             EntityType.SKELETON_HORSE,
             EntityType.ZOMBIE_HORSE,
-            EntityType.ZOMBIE,
-            EntityType.COW,
-            EntityType.CHICKEN,
-            EntityType.PIG,
-            EntityType.SHEEP,
-            EntityType.VILLAGER,
-            EntityType.WITHER,
-            EntityType.SLIME,
-            EntityType.SILVERFISH,
-            EntityType.RAVAGER,
-            EntityType.PHANTOM,
-            EntityType.VEX,
-            EntityType.TROPICAL_FISH
+            EntityType.SPIDER,
+            EntityType.ENDERMAN,
+            EntityType.ENDER_DRAGON
     ));
 
     private static final List<Item> spawnItems = new ArrayList<>(Arrays.asList(
@@ -124,13 +125,19 @@ public class Commands {
 
     static {
         spawnEntities.forEach((et) -> {
-            String entityName = et.getName().getString().toUpperCase().replace(" ", "");
+            String entityName = et.getDescription().getString().toUpperCase().replace(" ", "");
+            Log.info("Adding command SPAWN_{}", entityName);
+            CommandList.put("SPAWN_" + entityName, (states, u, u1, server, viewer, type) -> SpawnEntity(states, server, viewer, type, et));
+        });
+
+        spawnBigEntites.forEach(et -> {
+            String entityName = et.getDescription().getString().toUpperCase().replace(" ", "");
             Log.info("Adding command SPAWN_{}", entityName);
             CommandList.put("SPAWN_" + entityName, (states, u, u1, server, viewer, type) -> SpawnEntity(states, server, viewer, type, et));
         });
 
         spawnItems.forEach((item) -> {
-            String itemName = item.getName().getString().toUpperCase().replace(" ", "");
+            String itemName = item.getDescription().getString().toUpperCase().replace(" ", "");
             Log.info("Adding command CREATE_{}", itemName);
             CommandList.put("CREATE_" + itemName, (states, player, u1, server, viewer, type) -> SpawnItem(states, player, server, viewer, type, item));
         });
@@ -163,7 +170,7 @@ public class Commands {
     }
 
     public static void SendPlayerSystemMessage(PlayerEntity player, String msg, Object... params) {
-        player.sendStatusMessage(new StringTextComponent(MessageFormat.format(msg, params)), false);
+        player.displayClientMessage(new StringTextComponent(MessageFormat.format(msg, params)), false);
     }
 
     public static void SendSystemMessage(MinecraftServer server, String msg, Object... params) {
@@ -179,19 +186,19 @@ public class Commands {
             return res.SetEffectResult(EffectResult.Success);
         }
 
-        if (type == RequestType.Stop || player.getEntityWorld().getWorldInfo().getDifficulty() == diff) {
+        if (type == RequestType.Stop || player.getCommandSenderWorld().getLevelData().getDifficulty() == diff) {
             return res.SetEffectResult(EffectResult.Unavailable);
         }
 
         try {
-            DifficultyCommand.setDifficulty(server.getCommandSource(), diff);
+            DifficultyCommand.setDifficulty(server.createCommandSourceStack(), diff);
         } catch (CommandSyntaxException e) {
-            Log.error("Got command syntax exception: " + e.toString());
+            Log.error("Got command syntax exception: " + e);
             return res.SetEffectResult(EffectResult.Failure);
         }
 
-        Log.info(Messages.ServerSetDifficult, viewer, diff.getDisplayName().getUnformattedComponentText());
-        SendPlayerMessage(player, Messages.ClientSetDifficult, viewer, diff.getDisplayName().getUnformattedComponentText());
+        Log.info(Messages.ServerSetDifficult, viewer, diff.getDisplayName().getContents());
+        SendPlayerMessage(player, Messages.ClientSetDifficult, viewer, diff.getDisplayName().getContents());
 
         return res.SetEffectResult(EffectResult.Success);
     }
@@ -210,12 +217,12 @@ public class Commands {
 
         ItemStack is = new ItemStack(item);
         is.setCount(1);
-        p.entityDropItem(is);
+        p.spawnAtLocation(is);
         RunOnPlayers(server, (player -> {
-            player.entityDropItem(is);
+            player.spawnAtLocation(is);
 
-            Log.info(Messages.ServerCreateItem, viewer, player.getName().getString(), item.getName().getString());
-            SendPlayerMessage(player, Messages.ClientCreateItem, viewer, item.getName().getString());
+            Log.info(Messages.ServerCreateItem, viewer, player.getName().getString(), item.getDescription().getString());
+            SendPlayerMessage(player, Messages.ClientCreateItem, viewer, item.getDescription().getString());
 
             return true;
         }));
@@ -240,9 +247,9 @@ public class Commands {
                 Log.info(Messages.ServerKill, viewer, player.getName().getString());
                 SendPlayerMessage(player, Messages.ClientKill, viewer);
 
-                player.world.createExplosion(player, player.getPosX(), player.getPosY(), player.getPosZ(), 8, Explosion.Mode.DESTROY);
+                player.level.explode(player, player.getX(), player.getY(), player.getZ(), 8, Explosion.Mode.DESTROY);
 
-                player.world.makeFireworks(player.getPosX(), player.getPosY(), player.getPosZ(), 0, 0, 0, null);
+                player.level.createFireworks(player.getX(), player.getY(), player.getZ(), 0, 0, 0, null);
                 player.setHealth(0);
                 return true;
             }
@@ -251,9 +258,10 @@ public class Commands {
         }));
 
         if (result) {
-            client.player.playSound(SoundEvents.ENTITY_ENDERMAN_SCREAM, 6, 0.25f);
-            p.world.makeFireworks(p.getPosX(), p.getPosY(), p.getPosZ() + 20, 0, 0, 0, null);
-            p.setMotion(2, 2, 2);
+            assert client.player != null;
+            client.player.playSound(SoundEvents.ENDERMAN_SCREAM, 6, 0.25f);
+            p.level.createFireworks(p.getX(), p.getY(), p.getZ() + 20, 0, 0, 0, null);
+            p.setDeltaMovement(2, 2, 2);
         }
 
         return result ? res.SetEffectResult(EffectResult.Success) : res.SetEffectResult(EffectResult.Unavailable);
@@ -262,24 +270,25 @@ public class Commands {
     public static CommandResult RepairSelectedItem(PlayerStates states, PlayerEntity player, Minecraft client, MinecraftServer server, String viewer, RequestType type) {
         CommandResult res = new CommandResult(states);
 
-        int itemIndex = player.inventory.currentItem;
-        ItemStack is = player.inventory.mainInventory.get(itemIndex);
+        int itemIndex = player.inventory.selected;
+        ItemStack is = player.inventory.items.get(itemIndex);
 
-        if (is.isEmpty() || !is.isRepairable() || is.getDamage() == 0 || player.getHealth() == 0) {
+        if (is.isEmpty() || !is.isRepairable() || is.getDamageValue() == 0 || player.getHealth() == 0) {
             return res.SetEffectResult(EffectResult.Retry);
         }
 
         RunOnPlayers(server, (p) -> {
-            p.inventory.mainInventory.get(itemIndex).setDamage(0);
+            p.inventory.items.get(itemIndex).setDamageValue(0);
             return true;
         });
 
-        player.inventory.mainInventory.get(itemIndex).setDamage(0);
+        player.inventory.items.get(itemIndex).setDamageValue(0);
 
-        client.player.playSound(SoundEvents.BLOCK_ANVIL_HIT, 1, 1);
+        assert client.player != null;
+        client.player.playSound(SoundEvents.ANVIL_HIT, 1, 1);
 
-        Log.info(Messages.ServerRepairItem, viewer, player.getName().getString(), is.getItem().getName().getString());
-        SendPlayerMessage(player, Messages.ClientRepairItem, viewer, is.getItem().getName().getString());
+        Log.info(Messages.ServerRepairItem, viewer, player.getName().getString(), is.getItem().getDescription().getString());
+        SendPlayerMessage(player, Messages.ClientRepairItem, viewer, is.getItem().getDescription().getString());
 
         return res.SetEffectResult(EffectResult.Success);
     }
@@ -287,25 +296,26 @@ public class Commands {
     public static CommandResult DropSelectedItem(PlayerStates states, PlayerEntity player, Minecraft client, MinecraftServer server, String viewer, RequestType type) {
         CommandResult res = new CommandResult(states);
 
-        int itemIndex = player.inventory.currentItem;
-        ItemStack is = player.inventory.mainInventory.get(itemIndex);
+        int itemIndex = player.inventory.selected;
+        ItemStack is = player.inventory.items.get(itemIndex);
 
         if (is.isEmpty() || player.getHealth() == 0) {
             return res.SetEffectResult(EffectResult.Retry);
         }
 
         RunOnPlayers(server, (p) -> {
-            p.dropItem(is, false);
-            p.inventory.mainInventory.set(itemIndex, ItemStack.EMPTY);
+            p.drop(is, false);
+            p.inventory.items.set(itemIndex, ItemStack.EMPTY);
             return true;
         });
 
-        player.inventory.mainInventory.set(itemIndex, ItemStack.EMPTY);
+        player.inventory.items.set(itemIndex, ItemStack.EMPTY);
 
-        client.player.playSound(SoundEvents.ENTITY_COW_DEATH, 1, 8);
+        assert client.player != null;
+        client.player.playSound(SoundEvents.COW_DEATH, 1, 8);
 
-        Log.info(Messages.ServerDropItem, viewer, player.getName().getString(), is.getItem().getName().getString());
-        SendPlayerMessage(player, Messages.ClientDropItem, viewer, is.getItem().getName().getString());
+        Log.info(Messages.ServerDropItem, viewer, player.getName().getString(), is.getItem().getDescription().getString());
+        SendPlayerMessage(player, Messages.ClientDropItem, viewer, is.getItem().getDescription().getString());
 
         return res.SetEffectResult(EffectResult.Success);
     }
@@ -313,8 +323,8 @@ public class Commands {
     public static CommandResult DestroySelectedItem(PlayerStates states, PlayerEntity player, Minecraft client, MinecraftServer server, String viewer, RequestType type) {
         CommandResult res = new CommandResult(states);
 
-        int itemIndex = player.inventory.currentItem;
-        ItemStack is = player.inventory.mainInventory.get(itemIndex);
+        int itemIndex = player.inventory.selected;
+        ItemStack is = player.inventory.items.get(itemIndex);
         if (is.isEmpty() || player.getHealth() == 0) {
             return res.SetEffectResult(EffectResult.Retry);
         }
@@ -323,21 +333,22 @@ public class Commands {
             int newCount = is.getCount() - 1;
             is.setCount(newCount);
             RunOnPlayers(server, (p) -> {
-                p.inventory.mainInventory.get(itemIndex).setCount(newCount);
+                p.inventory.items.get(itemIndex).setCount(newCount);
                 return true;
             });
         } else {
-            player.inventory.mainInventory.set(itemIndex, ItemStack.EMPTY);
+            player.inventory.items.set(itemIndex, ItemStack.EMPTY);
             RunOnPlayers(server, (p) -> {
-                p.inventory.mainInventory.set(itemIndex, ItemStack.EMPTY);
+                p.inventory.items.set(itemIndex, ItemStack.EMPTY);
                 return true;
             });
         }
 
-        client.player.playSound(SoundEvents.ENTITY_COW_HURT, 1, 8);
+        assert client.player != null;
+        client.player.playSound(SoundEvents.COW_HURT, 1, 8);
 
-        Log.info(Messages.ServerDestroyItem, viewer, player.getName().getString(), is.getItem().getName().getString());
-        SendPlayerMessage(player, Messages.ClientDestroyItem, viewer, is.getItem().getName().getString());
+        Log.info(Messages.ServerDestroyItem, viewer, player.getName().getString(), is.getItem().getDescription().getString());
+        SendPlayerMessage(player, Messages.ClientDestroyItem, viewer, is.getItem().getDescription().getString());
 
         return res.SetEffectResult(EffectResult.Success);
     }
@@ -352,8 +363,8 @@ public class Commands {
 
             Log.info(Messages.ServerDrunkModeStarted, viewer);
             SendPlayerMessage(player, Messages.ClientDrunkModeStarted, viewer);
-            EffectInstance eff = new EffectInstance(Effects.NAUSEA, 60 * 21, 2); // ~21 ticks = 1 second
-            player.addPotionEffect(eff);
+            EffectInstance eff = new EffectInstance(Effects.CONFUSION, 60 * 21, 2); // ~21 ticks = 1 second
+            player.addEffect(eff);
 
             return res
                     .SetNewStates(states.setDrunkMode(true))
@@ -366,7 +377,7 @@ public class Commands {
             Log.info(Messages.ServerDrunkModeRestored);
             SendPlayerMessage(player, Messages.ClientDrunkModeRestored);
 
-            player.removePotionEffect(Effects.NAUSEA);
+            player.removeEffect(Effects.CONFUSION);
 
             return res
                     .SetNewStates(states.setDrunkMode(false))
@@ -381,15 +392,14 @@ public class Commands {
 
 
         boolean result = RunOnPlayers(server, (player) -> {
-            World w = player.getEntityWorld();
             if (type == RequestType.Start) {
                 if (states.getGottaGoFast()) {
                     return false;
                 }
                 Log.info(Messages.ServerGottaGoFast, viewer);
                 SendPlayerMessage(player, Messages.ClientGottaGoFast, viewer);
-                EffectInstance eff = new EffectInstance(Effects.SPEED, 60 * 21, 10); // ~21 ticks = 1 second
-                player.addPotionEffect(eff);
+                EffectInstance eff = new EffectInstance(Effects.MOVEMENT_SPEED, 60 * 21, 10); // ~21 ticks = 1 second
+                player.addEffect(eff);
 
                 return true;
             } else if (type == RequestType.Stop) {
@@ -400,7 +410,7 @@ public class Commands {
                 Log.info(Messages.ServerGottaGoFastRestored);
                 SendPlayerMessage(player, Messages.ClientGottaGoFastRestored);
 
-                player.removePotionEffect(Effects.SPEED);
+                player.removeEffect(Effects.MOVEMENT_SPEED);
 
                 return true;
             }
@@ -423,13 +433,13 @@ public class Commands {
         CommandResult res = new CommandResult(states);
 
         boolean result = RunOnPlayers(server, (player) -> {
-            World w = player.getEntityWorld();
+            World w = player.getCommandSenderWorld();
             if (type == RequestType.Start) {
-                if (w.getWorldInfo().isRaining()) {
+                if (w.getLevelData().isRaining()) {
                     return false;
                 }
 
-                Biome b = w.getBiome(new BlockPos(player.getPositionVec()));
+                Biome b = w.getBiome(new BlockPos(player.position()));
 
                 if (b.getPrecipitation() == Biome.RainType.NONE) {
                     return false;
@@ -438,18 +448,18 @@ public class Commands {
                 Log.info(Messages.ServerMakeItRain, viewer);
                 SendPlayerMessage(player, Messages.ClientMakeItRain, viewer);
 
-                w.getWorldInfo().setRaining(true);
+                w.getLevelData().setRaining(true);
 
                 return true;
             } else if (type == RequestType.Stop) {
-                if (!w.getWorldInfo().isRaining()) {
+                if (!w.getLevelData().isRaining()) {
                     return false;
                 }
 
                 Log.info(Messages.ServerRainRestored);
                 SendPlayerMessage(player, Messages.ClientRainRestored);
 
-                w.getWorldInfo().setRaining(false);
+                w.getLevelData().setRaining(false);
 
                 return true;
             }
@@ -464,22 +474,22 @@ public class Commands {
         CommandResult res = new CommandResult(states);
 
         if (type == RequestType.Start) {
-            if (client.gameSettings.invertMouse) {
+            if (client.options.invertYMouse) {
                 return res.SetEffectResult(EffectResult.Retry);
             }
 
             Log.info(Messages.ServerInvertMouse, viewer, player.getName().getString());
             SendPlayerMessage(player, Messages.ClientInvertMouse, viewer);
-            AbstractOption.INVERT_MOUSE.set(client.gameSettings, "true");
+            AbstractOption.INVERT_MOUSE.set(client.options, "true");
             return res.SetEffectResult(EffectResult.Success);
         } else if (type == RequestType.Stop) {
-            if (!client.gameSettings.invertMouse) {
+            if (!client.options.invertYMouse) {
                 return res.SetEffectResult(EffectResult.Retry);
             }
 
             Log.info(Messages.ServerRestoreInvertMouse, player.getName().getString());
             SendPlayerMessage(player, Messages.ClientRestoreInvertMouse);
-            AbstractOption.INVERT_MOUSE.set(client.gameSettings, "false");
+            AbstractOption.INVERT_MOUSE.set(client.options, "false");
             return res.SetEffectResult(EffectResult.Success);
         }
 
@@ -525,10 +535,10 @@ public class Commands {
             return res.SetEffectResult(EffectResult.Unavailable);
         }
 
-        World world = player.getEntityWorld();
+        World world = player.getCommandSenderWorld();
         if (world.getDayTime() < 13000 || world.getDayTime() > 23000) {
             Log.info(Messages.ServerSetTimeNight, viewer);
-            TimeCommand.setTime(server.getCommandSource(), Tools.NIGHT);
+            TimeCommand.setTime(server.createCommandSourceStack(), Tools.NIGHT);
             return res.SetEffectResult(EffectResult.Success);
         }
 
@@ -555,18 +565,18 @@ public class Commands {
             }
 
             try {
-                BlockPos spawnPoint = ((ServerPlayerEntity)player).func_241140_K_(); // Believe or not, this is spawn point getter
+                BlockPos spawnPoint = ((ServerPlayerEntity)player).getRespawnPosition(); // Believe or not, this is spawn point getter
                 if (spawnPoint == null) {
                     Log.warn("No spawn point");
                     return false;
                 }
-                ServerWorld world = server.getWorlds().iterator().next();
-                if (world.func_230315_m_() != player.getEntityWorld().func_230315_m_()) {
-                    player.changeDimension(world, world.getDefaultTeleporter());
+                ServerWorld world = server.getAllLevels().iterator().next();
+                if (world.dimensionType() != player.getCommandSenderWorld().dimensionType()) {
+                    player.changeDimension(world, world.getPortalForcer());
                 }
-                player.setPositionAndUpdate(spawnPoint.getX(), spawnPoint.getY()+1, spawnPoint.getZ());
+                player.teleportTo(spawnPoint.getX(), spawnPoint.getY()+1, spawnPoint.getZ());
             } catch (Exception e) {
-                Log.error("Error getting field: " + e.toString());
+                Log.error("Error getting field: " + e);
                 return false;
             }
 
@@ -589,18 +599,18 @@ public class Commands {
         if (type == RequestType.Stop) {
             return res.SetEffectResult(EffectResult.Unavailable);
         }
-        World world = player.getEntityWorld();
+        World world = player.getCommandSenderWorld();
 
         if (world.getDayTime() > 6000) {
             Log.info(Messages.ServerSetTimeDay, viewer);
-            TimeCommand.setTime(server.getCommandSource(), Tools.DAY);
+            TimeCommand.setTime(server.createCommandSourceStack(), Tools.DAY);
             return res.SetEffectResult(EffectResult.Success);
         }
 
         return res.SetEffectResult(EffectResult.Unavailable);
     }
 
-    public static CommandResult SpawnEntity(PlayerStates states, MinecraftServer server, String viewer, RequestType type, EntityType entityType) {
+    public static CommandResult SpawnEntity(PlayerStates states, MinecraftServer server, String viewer, RequestType type, EntityType<?> entityType) {
         CommandResult res = new CommandResult(states);
 
         if (type == RequestType.Test) {
@@ -612,15 +622,19 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (player) -> {
-            Vector3d pos = player.getPositionVec();
+            Vector3d pos = player.position();
 
-            Log.info(Messages.ServerSpawn, viewer, entityType.getName().getString());
-            SendPlayerMessage(player, Messages.ClientSpawn, viewer, entityType.getName().getString());
+            Log.info(Messages.ServerSpawn, viewer, entityType.getDescription().getString());
+            SendPlayerMessage(player, Messages.ClientSpawn, viewer, entityType.getDescription().getString());
 
-            Entity e = entityType.create(player.getEntityWorld());
-            e.setPositionAndRotation(pos.getX() + 2, pos.getY() + 2, pos.getZ(), 0, 0);
-
-            player.getEntityWorld().addEntity(e);
+            Entity e = entityType.create(player.getCommandSenderWorld());
+            assert e != null;
+            if (spawnEntities.contains(e.getType())) {
+                e.absMoveTo(pos.x + player.getRandom().nextInt(4) - 2, pos.y + 1, pos.z + player.getRandom().nextInt(4) - 2, 0, 0);
+            } else {
+                e.absMoveTo(pos.x + player.getRandom().nextInt(4) - 2, pos.y + 1, pos.z + player.getRandom().nextInt(4) - 2, 0, 0);
+            }
+            player.getCommandSenderWorld().addFreshEntity(e);
 
             return true;
         });
@@ -640,7 +654,7 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (p -> {
-            FoodStats fs = p.getFoodStats();
+            FoodStats fs = p.getFoodData();
             if (fs.getFoodLevel() > 0 && player.getHealth() != 0) {
                 Log.info(Messages.ServerTakeFood, viewer, p.getName().getString());
                 SendPlayerMessage(p, Messages.ClientTakeFood, viewer);
@@ -666,7 +680,7 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (player -> {
-            FoodStats fs = player.getFoodStats();
+            FoodStats fs = player.getFoodData();
             if (fs.getFoodLevel() < Tools.MAX_FOOD && player.getHealth() != 0) {
                 Log.info(Messages.ServerGiveFood, viewer, player.getName().getString());
                 SendPlayerMessage(player, Messages.ClientGiveFood, viewer);
@@ -719,11 +733,11 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (player -> {
-            FoodStats fs = player.getFoodStats();
+            FoodStats fs = player.getFoodData();
             if (fs.getFoodLevel() > 0 && player.getHealth() != 0) {
                 Log.info(Messages.ServerTakeAllFood, viewer, player.getName().getString());
                 SendPlayerMessage(player, Messages.ClientTakeAllFood, viewer);
-                player.getFoodStats().setFoodLevel(0);
+                player.getFoodData().setFoodLevel(0);
 
                 return true;
             }
@@ -746,11 +760,11 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (player -> {
-            FoodStats fs = player.getFoodStats();
+            FoodStats fs = player.getFoodData();
             if (fs.getFoodLevel() < Tools.MAX_FOOD && player.getHealth() != 0) {
                 Log.info(Messages.ServerFillFood, viewer, player.getName().getString());
                 SendPlayerMessage(player, Messages.ClientFillFood, viewer);
-                player.getFoodStats().setFoodLevel(Tools.MAX_FOOD);
+                player.getFoodData().setFoodLevel(Tools.MAX_FOOD);
 
                 return true;
             }
@@ -850,11 +864,11 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (player -> {
-            if (player.getFireTimer() == -20) {
+            if (player.getRemainingFireTicks() == -20) {
                 Log.info(Messages.ServerSetFire, viewer, player.getName().getString());
                 SendPlayerMessage(player, Messages.ClientSetFire, viewer);
 
-                player.setFire(5);
+                player.setSecondsOnFire(5);
                 return true;
             }
             return false;
@@ -878,9 +892,9 @@ public class Commands {
             float health = player.getHealth();
             if (health != 0) {
                 Log.info(Messages.ServerKill, viewer, player.getName().getString());
-                player.inventory.mainInventory.forEach(is -> player.dropItem(is, false));
-                player.inventory.offHandInventory.forEach(is -> player.dropItem(is, false));
-                player.inventory.armorInventory.forEach(is -> player.dropItem(is, false));
+                player.inventory.items.forEach(is -> player.drop(is, false));
+                player.inventory.offhand.forEach(is -> player.drop(is, false));
+                player.inventory.armor.forEach(is -> player.drop(is, false));
                 SendPlayerMessage(player, Messages.ClientKill, viewer);
                 player.setHealth(0);
                 return true;
