@@ -1,5 +1,7 @@
 package com.racerxdl.minecrowdcontrol;
 
+import net.minecraft.util.text.TranslationTextComponent;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -25,5 +27,9 @@ public class Tools {
         }
 
         return sb.toString();
+    }
+
+    public static String makeTranslation(String message) {
+        return new TranslationTextComponent(message).getString();
     }
 }

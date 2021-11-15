@@ -7,6 +7,8 @@ import net.minecraftforge.fml.config.ModConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import static com.racerxdl.minecrowdcontrol.Tools.makeTranslation;
+
 public class CrowdControlModConfig extends ModConfig {
     private static final Logger Log = LogManager.getLogger();
 
@@ -23,12 +25,10 @@ public class CrowdControlModConfig extends ModConfig {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.push("General");
         ModEnabled = builder
-                .comment("Enables/Disables the whole Mod [false/true|default:true]")
-                .translation("enable.crowdcontrol.config")
+                .comment(makeTranslation("enable.crowdcontrol"))
                 .define("enableMod", true);
         ShowEffectMessages = builder
-                .comment("Enables/Disables showing effect messages [false/true|default:true]")
-                .translation("enable.crowdcontrol.config")
+                .comment(makeTranslation("enable.crowdcontrol.effects"))
                 .define("showEffectMessages", true);
         builder.pop();
         configSpec = builder.build();

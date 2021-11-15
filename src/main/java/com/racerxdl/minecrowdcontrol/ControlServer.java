@@ -20,6 +20,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static com.racerxdl.minecrowdcontrol.Tools.makeTranslation;
+
 public class ControlServer {
     private static final Logger Log = LogManager.getLogger();
 
@@ -102,19 +104,26 @@ public class ControlServer {
     }
 
     private void serverLoop() {
+        int retries = 0;
         Log.info("Server loop started");
         while (running.get()) {
-            try {
-                Commands.SendSystemMessage(server, TextFormatting.AQUA + "Trying to connect to Crowd Control");
-                Log.info("Trying to connect to Crowd Control");
-                Socket s = new Socket("localhost", 58430);
-                Log.info("Connected to crowd control!");
-                Commands.SendSystemMessage(server, TextFormatting.GREEN + "Connected to crowd control!");
-                clientLoop(s);
-                Commands.SendSystemMessage(server, TextFormatting.RED + "Disconnected from crowd control");
-                Log.info("Disconnected from crowd control");
-            } catch (Exception e) {
-                Log.error("Socket error: " + e.getMessage());
+            if (retries <= 3) {
+                try {
+                    Commands.SendSystemMessage(server, TextFormatting.AQUA + makeTranslation("crowdcontrol.connect"));
+                    Log.info("Trying to connect to Crowd Control");
+                    Socket s = new Socket("localhost", 58430);
+                    Log.info("Connected to crowd control!");
+                    Commands.SendSystemMessage(server, TextFormatting.GREEN + makeTranslation("crowdcontrol.connected"));
+                    clientLoop(s);
+                    Commands.SendSystemMessage(server, TextFormatting.RED + makeTranslation("crowdcontrol.disconnected"));
+                    Log.info("Disconnected from crowd control");
+                } catch (Exception e) {
+                    Log.error("Socket error: " + e.getMessage());
+                    retries++;
+                }
+            } else {
+                Commands.SendSystemMessage(server, TextFormatting.DARK_RED + makeTranslation("crowdcontrol.unable_2_connect"));
+                break;
             }
         }
         Log.info("Server loop ended");
