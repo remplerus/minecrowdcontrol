@@ -1,8 +1,5 @@
 package com.racerxdl.minecrowdcontrol;
 
-import net.minecraft.potion.EffectInstance;
-import net.minecraft.potion.Effects;
-
 public class PlayerStates {
     private boolean jumpDisabled;
     private boolean gottaGoFast;

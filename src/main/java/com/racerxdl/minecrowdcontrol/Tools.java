@@ -1,6 +1,6 @@
 package com.racerxdl.minecrowdcontrol;
 
-import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.network.chat.TranslatableComponent;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,6 +30,6 @@ public class Tools {
     }
 
     public static String makeTranslation(String message) {
-        return new TranslationTextComponent(message).getString();
+        return new TranslatableComponent(message).getString();
     }
 }

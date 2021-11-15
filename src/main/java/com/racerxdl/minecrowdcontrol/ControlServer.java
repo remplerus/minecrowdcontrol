@@ -5,10 +5,10 @@ import com.racerxdl.minecrowdcontrol.CrowdControl.EffectResult;
 import com.racerxdl.minecrowdcontrol.CrowdControl.Request;
 import com.racerxdl.minecrowdcontrol.CrowdControl.RequestType;
 import com.racerxdl.minecrowdcontrol.CrowdControl.Response;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.text.TextFormatting;
+import net.minecraft.world.entity.player.Player;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,7 +26,7 @@ public class ControlServer {
     private static final Logger Log = LogManager.getLogger();
 
     private final MinecraftServer server;
-    private PlayerEntity player;
+    private Player player;
     private final AtomicBoolean running;
     private Minecraft client;
     private PlayerStates states;
@@ -91,7 +91,7 @@ public class ControlServer {
         SetStates(GetStates().setOriginalFOV(client.options.fov));
     }
 
-    public void SetPlayer(PlayerEntity player) {
+    public void SetPlayer(Player player) {
         Log.info("Setting player to " + player.toString());
         this.player = player;
         if (GetStates().getGottaGoFast()) {
@@ -109,20 +109,20 @@ public class ControlServer {
         while (running.get()) {
             if (retries <= 3) {
                 try {
-                    Commands.SendSystemMessage(server, TextFormatting.AQUA + makeTranslation("crowdcontrol.connect"));
+                    Commands.SendSystemMessage(server, ChatFormatting.AQUA + makeTranslation("crowdcontrol.connect"));
                     Log.info("Trying to connect to Crowd Control");
                     Socket s = new Socket("localhost", 58430);
                     Log.info("Connected to crowd control!");
-                    Commands.SendSystemMessage(server, TextFormatting.GREEN + makeTranslation("crowdcontrol.connected"));
+                    Commands.SendSystemMessage(server, ChatFormatting.GREEN + makeTranslation("crowdcontrol.connected"));
                     clientLoop(s);
-                    Commands.SendSystemMessage(server, TextFormatting.RED + makeTranslation("crowdcontrol.disconnected"));
+                    Commands.SendSystemMessage(server, ChatFormatting.RED + makeTranslation("crowdcontrol.disconnected"));
                     Log.info("Disconnected from crowd control");
                 } catch (Exception e) {
                     Log.error("Socket error: " + e.getMessage());
                     retries++;
                 }
             } else {
-                Commands.SendSystemMessage(server, TextFormatting.DARK_RED + makeTranslation("crowdcontrol.unable_2_connect"));
+                Commands.SendSystemMessage(server, ChatFormatting.DARK_RED + makeTranslation("crowdcontrol.unable_2_connect"));
                 break;
             }
         }
@@ -190,7 +190,7 @@ public class ControlServer {
                 ScheduleCommand(req.code, sendStopAfter);
             }
 
-            if (req.type == RequestType.Start && res.status == EffectResult.Success && req.code.toUpperCase().equals("DRUNK_MODE")) {
+            if (req.type == RequestType.Start && res.status == EffectResult.Success && req.code.equalsIgnoreCase("DRUNK_MODE")) {
                 Log.info("Starting drunk mode loop");
                 SetStates(GetStates().setOriginalFOV(client.options.fov));
                 DrunkModeLoop();

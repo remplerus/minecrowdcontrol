@@ -1,9 +1,8 @@
 package com.racerxdl.minecrowdcontrol;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.world.entity.player.Player;
 
 @FunctionalInterface
 public interface PlayerRunnable {
-    boolean run(PlayerEntity player);
+    boolean run(Player player);
 }
