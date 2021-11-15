@@ -3,9 +3,7 @@ package com.racerxdl.minecrowdcontrol;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.racerxdl.minecrowdcontrol.CrowdControl.EffectResult;
 import com.racerxdl.minecrowdcontrol.CrowdControl.RequestType;
-import net.minecraft.client.CycleOption;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Option;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
@@ -487,9 +485,7 @@ public class Commands {
 
     public static CommandResult SetInvertMouse(PlayerStates states, Player player, Minecraft client, MinecraftServer unused2, String viewer1, RequestType type) {
         CommandResult res = new CommandResult(states);
-        SendPlayerMessage(player, "Inverting Mouse doesn't function atm!");
-        return res.SetEffectResult(EffectResult.Failure);
-        /*String viewer = WordUtils.capitalize(viewer1);
+        String viewer = WordUtils.capitalizeFully(viewer1);
 
         if (type == RequestType.Start) {
             if (client.options.invertYMouse) {
@@ -498,7 +494,7 @@ public class Commands {
 
             Log.info(Messages.ServerInvertMouse, viewer, player.getName().getString());
             SendPlayerMessage(player, Messages.ClientInvertMouse, viewer);
-            //Option.INVERT_MOUSE.set(client.options, "true");
+            client.options.invertYMouse = true;
             return res.SetEffectResult(EffectResult.Success);
         } else if (type == RequestType.Stop) {
             if (!client.options.invertYMouse) {
@@ -507,12 +503,11 @@ public class Commands {
 
             Log.info(Messages.ServerRestoreInvertMouse, player.getName().getString());
             SendPlayerMessage(player, Messages.ClientRestoreInvertMouse);
-            //AbstractOption.INVERT_MOUSE.set(client.options, "false");
+            client.options.invertYMouse = false;
             return res.SetEffectResult(EffectResult.Success);
         }
 
         return res.SetEffectResult(EffectResult.Success);
-        */
     }
 
     public static CommandResult SetJumpDisabled(PlayerStates states, Player player, Minecraft client, MinecraftServer unused2, String viewer1, RequestType type) {

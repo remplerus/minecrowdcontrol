@@ -1,29 +1,29 @@
 modLoader="javafml"
-loaderVersion="[31,)"
+loaderVersion="[37,)"
 license="The MIT License (MIT)"
 
 [[mods]]
 modId="minecrowdcontrol"
 version="${file.jarVersion}"
 displayName="Minecraft CrowdControl"
-displayURL="https://github.com/TheGamersBrew/minecrowdcontrol" 
+displayURL="https://github.com/remplerus/minecrowdcontrol"
 logoFile="minecrowdcontrol.png"
 credits="Orginal Autor Credit goes to Lucas Teske. Thanks for CrowdControl SDK!"
-authors="Updated by XzeroAir & The Gamers Brew"
+authors="Updated by XzeroAir & The Gamers Brew & Rempler"
 description='''
-This mod integrates with CrowdControl so you can stream at twitch and give crowd control habilities! Works with Minecraft version 1.16.1 through 1.16.5.
+This mod integrates with CrowdControl so you can stream at twitch and give crowd control habilities! Works with Minecraft version 1.17.1.
 '''
 
 [[dependencies.minecrowdcontrol]] 
     modId="forge" 
     mandatory=true 
-    versionRange="[31,)" 
+    versionRange="[37,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.minecrowdcontrol]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.16.1,]"
+    versionRange="[1.17.1,]"
     ordering="NONE"
     side="BOTH"
