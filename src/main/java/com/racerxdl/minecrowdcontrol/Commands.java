@@ -3,6 +3,7 @@ package com.racerxdl.minecrowdcontrol;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.racerxdl.minecrowdcontrol.CrowdControl.EffectResult;
 import com.racerxdl.minecrowdcontrol.CrowdControl.RequestType;
+import net.minecraft.client.CycleOption;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Option;
 import net.minecraft.core.BlockPos;
