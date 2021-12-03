@@ -461,7 +461,9 @@ public class Commands {
                 SendPlayerMessage(player, Messages.ClientMakeItRain, viewer);
 
                 w.getLevelData().setRaining(true);
-
+                Objects.requireNonNull(w.getServer()).getWorldData().overworldData().setClearWeatherTime(0);
+                w.getServer().getWorldData().overworldData().setRainTime(1500);
+                w.getServer().getWorldData().overworldData().setThundering(false);
                 return true;
             } else if (type == RequestType.Stop) {
                 if (!w.getLevelData().isRaining()) {
