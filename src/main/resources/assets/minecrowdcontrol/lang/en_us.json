@@ -43,6 +43,7 @@
   "client.almost_dead": "Viewer {0} just took all your hearts but half",
   "client.heal": "Viewer {0} just filled all your hearts",
   "client.spawn_entity": "Viewer {0} just spawned a {1}",
+  "client.spawn_entity.peaceful": "Viewer {0} wanted to spawn something but the world's difficulty is set to peaceful. \n It'll be spawned, when difficulty is not peaceful anymore",
   "client.invert_mouse": "Viewer {0} just inverted your mouse",
   "client.restore_mouse": "Your mouse inversion has been restored",
   "client.take_all_food": "Viewer {0} just took all your food points. Now you're hungry!",

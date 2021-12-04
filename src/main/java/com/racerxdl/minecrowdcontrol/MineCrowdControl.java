@@ -7,6 +7,8 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModContainer;
@@ -17,8 +19,6 @@ import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fmlserverevents.FMLServerStartingEvent;
-import net.minecraftforge.fmlserverevents.FMLServerStoppingEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,11 +30,10 @@ public class MineCrowdControl {
 
     private ControlServer cs;
     private Minecraft client;
-    private CrowdControlModConfig modconfig;
 
     public MineCrowdControl() {
         ModContainer modContainer = ModLoadingContext.get().getActiveContainer();
-        modconfig = new CrowdControlModConfig(modContainer);
+        CrowdControlModConfig modconfig = new CrowdControlModConfig(modContainer);
         modContainer.addConfig(modconfig);
 
         Log.debug("Config file: " + modconfig.getFileName());
@@ -63,13 +62,13 @@ public class MineCrowdControl {
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
-    public void onServerStarting(FMLServerStartingEvent event) {
+    public void onServerStarting(ServerStartingEvent event) {
         Log.info("Server started. Creating Control Server");
         cs = new ControlServer(event.getServer());
     }
 
     @SubscribeEvent
-    public void onServerStopping(FMLServerStoppingEvent event) {
+    public void onServerStopping(ServerStoppingEvent event) {
         Log.info("Server stopping. Stopping Control Server");
         cs.Stop();
         cs = null;

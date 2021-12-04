@@ -25,6 +25,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.logging.log4j.LogManager;
@@ -36,6 +37,7 @@ import java.util.*;
 public class Commands {
     private static final Logger Log = LogManager.getLogger();
     private static boolean enablePlayerMessages = false;
+    private static int checkedDifficulty = 0;
 
     public static final Map<String, MinecraftCommand> CommandList = new HashMap<>() {{
         put("KILL", Commands::KillPlayers);
@@ -465,10 +467,6 @@ public class Commands {
                 w.getServer().getWorldData().overworldData().setThundering(false);
                 return true;
             } else if (type == RequestType.Stop) {
-                if (!w.getLevelData().isRaining()) {
-                    return false;
-                }
-
                 Log.info(Messages.ServerRainRestored);
                 SendPlayerMessage(player, Messages.ClientRainRestored);
 
@@ -585,8 +583,9 @@ public class Commands {
             try {
                 BlockPos spawnPoint = ((ServerPlayer)player).getRespawnPosition(); // Believe or not, this is spawn point getter
                 if (spawnPoint == null) {
-                    Log.warn("No spawn point");
-                    return false;
+                    ServerLevelData data = server.getWorldData().overworldData();
+                    spawnPoint = new BlockPos(data.getXSpawn(), data.getYSpawn(), data.getZSpawn());
+                    Log.info("No spawnpoint found, move to world spawn");
                 }
                 ServerLevel world = server.getAllLevels().iterator().next();
                 if (world.dimensionType() != player.getCommandSenderWorld().dimensionType()) {
@@ -643,8 +642,15 @@ public class Commands {
         }
 
         boolean result = RunOnPlayers(server, (player) -> {
-            Vec3 pos = player.position();
+            if (server.getWorldData().getDifficulty() == Difficulty.PEACEFUL) {
+                if (checkedDifficulty == 0) {
+                    SendPlayerMessage(player, Messages.ClientSpawnPeaceful, viewer);
+                    checkedDifficulty = 1;
+                }
+                return false;
+            }
 
+            Vec3 pos = player.position();
             Entity e = entityType.create(player.getCommandSenderWorld());
             if (e != null && e.isFree(pos.x + player.getRandom().nextInt(4) - 2, pos.y + 1, pos.z + player.getRandom().nextInt(4) -2)) {
                 e.absMoveTo(pos.x + player.getRandom().nextInt(4) - 2, pos.y + 1, pos.z + player.getRandom().nextInt(4) - 2, 0, 0);
@@ -653,6 +659,7 @@ public class Commands {
                 SendPlayerMessage(player, Messages.ClientSpawn, viewer, entityType.getDescription().getString());
 
                 player.getCommandSenderWorld().addFreshEntity(e);
+                checkedDifficulty = 0;
             } else {
                 return false;
             }
