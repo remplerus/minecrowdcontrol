@@ -51,6 +51,7 @@ public class Messages {
     public static final String ClientTakeAllHeartsButHalf = TextFormatting.RED + makeTranslation("client.almost_dead");
     public static final String ClientFillAllHearts = TextFormatting.GREEN + makeTranslation("client.heal");
     public static final String ClientSpawn = TextFormatting.GOLD + makeTranslation("client.spawn_entity");
+    public static final String ClientSpawnPeaceful = TextFormatting.GOLD + makeTranslation("client.spawn_entity.peaceful");
     public static final String ClientInvertMouse = TextFormatting.RED + makeTranslation("client.invert_mouse");
     public static final String ClientRestoreInvertMouse = TextFormatting.GREEN + makeTranslation("client.restore_mouse");
     public static final String ClientTakeAllFood = TextFormatting.RED + makeTranslation("client.take_all_food");

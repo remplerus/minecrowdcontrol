@@ -1,73 +1,49 @@
 package com.racerxdl.minecrowdcontrol;
 
+import com.mojang.realmsclient.gui.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.TextFormatting;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.math.Vec3d;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModContainer;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
-import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-// The value here should match an entry in the META-INF/mods.toml file
-@Mod(ModData.MODID)
+import java.io.File;
+
+import static com.racerxdl.minecrowdcontrol.Tools.makeTranslation;
+
+@Mod(modid = ModData.MODID, name = "Minecraft CrowdControl", version = "1.1.0", acceptedMinecraftVersions = "[1.12, 1.13)", useMetadata = true)
+@Mod.EventBusSubscriber
 public class MineCrowdControl {
-    // Directly reference a log4j logger.
     private static final Logger Log = LogManager.getLogger();
+
+    @Mod.Instance
+    public static MineCrowdControl instance;
 
     private ControlServer cs;
     private Minecraft client;
-    private CrowdControlModConfig modconfig;
 
     public MineCrowdControl() {
-        ModContainer modContainer = ModLoadingContext.get().getActiveContainer();
-        modconfig = new CrowdControlModConfig(modContainer);
-        modContainer.addConfig(modconfig);
-
-        Log.debug("Config file: " + modconfig.getFileName());
-
-        // Register the setup method for modloading
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
-        // Register the doClientStuff method for modloading
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
-
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigReload);
-
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigLoad);
-
-        // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
     }
 
-    private void setup(final FMLCommonSetupEvent event) {
-//        ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.COMMON, CCConfig.spec);
-    }
-
-    private void doClientStuff(final FMLClientSetupEvent event) {
-        Log.info("Got Client");
-        this.client = event.getMinecraftSupplier().get();
-    }
-
     // You can use SubscribeEvent and let the Event Bus discover methods to call
-    @SubscribeEvent
+    @Mod.EventHandler
     public void onServerStarting(FMLServerStartingEvent event) {
         Log.info("Server started. Creating Control Server");
         cs = new ControlServer(event.getServer());
     }
 
-    @SubscribeEvent
+    @Mod.EventHandler
     public void onServerStopping(FMLServerStoppingEvent event) {
         Log.info("Server stopping. Stopping Control Server");
         cs.Stop();
@@ -77,43 +53,31 @@ public class MineCrowdControl {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onJump(LivingEvent.LivingJumpEvent event) {
         if (cs.GetStates().getJumpDisabled()) {
-            Vector3d motion = event.getEntity().getDeltaMovement();
-            event.getEntity().setDeltaMovement(motion.x(), 0, motion.z());
+            Vec3d motion = event.getEntity().getForward();
+            event.getEntity().getForward().addVector(motion.x, 0, motion.z);
         }
     }
 
     @SubscribeEvent
     public void onWorldEntry(EntityJoinWorldEvent event) {
-        if (event.getEntity() instanceof PlayerEntity) {
-            if (CrowdControlModConfig.ModEnabled.get()) {
+        if (event.getEntity() instanceof EntityPlayer) {
+            if (CrowdControlModConfig.enableMod) {
                 Log.info("Player in. Starting CrowdControl");
                 cs.SetClient(client);
-                cs.SetPlayer((PlayerEntity) event.getEntity());
+                cs.SetPlayer((EntityPlayer) event.getEntity());
 
-                Commands.SetEnablePlayerMessages(CrowdControlModConfig.ShowEffectMessages.get());
+                Commands.SetEnablePlayerMessages(CrowdControlModConfig.showEffectMessages);
 
                 cs.Start();
             } else {
-                Commands.SendPlayerSystemMessage((PlayerEntity) event.getEntity(), TextFormatting.RED + "Crowd Control is disabled");
+                Commands.SendPlayerSystemMessage((EntityPlayer) event.getEntity(), "Crowd Control is disabled");
             }
         }
     }
 
-    @SubscribeEvent
-    public void onConfigReload(ModConfig.Reloading configEvent) {
-        ModConfig config = configEvent.getConfig();
-        Log.info("Reloaded config for mod {}", config.getModId());
-        if (config.getModId().equals(ModData.MODID)) {
-            Commands.SetEnablePlayerMessages(CrowdControlModConfig.ShowEffectMessages.get());
-        }
-    }
-
-    @SubscribeEvent
-    public void onConfigLoad(ModConfig.Loading configEvent) {
-        ModConfig config = configEvent.getConfig();
-        Log.info("Loading config for mod {}", config.getModId());
-        if (config.getModId().equals(ModData.MODID)) {
-            Commands.SetEnablePlayerMessages(CrowdControlModConfig.ShowEffectMessages.get());
-        }
+    @Mod.EventHandler
+    public void onConfigLoad(FMLPreInitializationEvent configEvent) {
+        Log.info("Got Client");
+        this.client = Minecraft.getMinecraft();
     }
 }

@@ -1,0 +1,16 @@
+[
+{
+  "modid": "minecrowdcontrol",
+  "name": "Minecraft CrowdControl",
+  "description": "This mod integrates with CrowdControl so you can stream at twitch and give crowd control habilities! Works with Minecraft version 1.12",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "https://github.com/remplerus/minecrowdcontrol",
+  "updateUrl": "",
+  "authorList": ["racerxdl, XzeroAir, The Gamers Brew, Rempler"],
+  "credits": "Orginal Autor Credit goes to Lucas Teske. Thanks for CrowdControl SDK!",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
